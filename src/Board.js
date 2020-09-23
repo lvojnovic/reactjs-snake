@@ -16,7 +16,7 @@ class Board extends React.Component {
 
     this.state = this.getInitialState();
 
-    this.keyPress = this.keyPress.bind(this);
+    this.changeDirection = this.changeDirection.bind(this);
   }
 
   getInitialState() {
@@ -45,28 +45,40 @@ class Board extends React.Component {
     return pos;
   }
 
-  tick() {
+  movePos(pos, direction) {
+    const bs = boardSize;
     const move = {
-      up: (pos) => pos < boardSize ? boardSize*boardSize-boardSize+pos : pos - 1*boardSize,
-      down: (pos) => (pos + boardSize)%(boardSize*boardSize),
-      right: (pos) => ((pos+1)%boardSize === 0) ? pos+1-boardSize : pos+1,
-      left: (pos) => pos === 0 ? boardSize-1 : ((pos-1)%boardSize === boardSize-1) ? pos-1+boardSize : pos-1
+      up: (pos) => pos < bs ? bs*bs-bs+pos : pos - 1*bs,
+      down: (pos) => (pos + bs)%(bs*bs),
+      right: (pos) => ((pos+1)%bs === 0) ? pos+1-bs : pos+1,
+      left: (pos) => pos === 0 ? bs-1 : ((pos-1)%bs === bs-1) ? pos-1+bs : pos-1
     };
-    let newSnake = this.state.snake.map((snakeTile) => {
-        let newPos = move[snakeTile.direction](snakeTile.pos);
+
+    return move[direction](pos);
+  }
+
+  moveSnake() {
+    return this.state.snake.map((snakeTile) => {
+        let newPos = this.movePos(snakeTile.pos, snakeTile.direction);
         let change = this.state.directionChanges.find((d) => d.pos === newPos);
         return {pos: newPos, direction: change ? change.direction : snakeTile.direction};
     });
+  }
+
+  tick() {
+    let newSnake = this.moveSnake();
     let head = newSnake[0];
+
     let foundFood = head.pos === this.state.food;
     if (foundFood) {
-        const newHead = {pos: move[head.direction](this.state.food), direction:head.direction};
+        const newHead = {pos: this.movePos(this.state.food, head.direction), direction:head.direction};
         newSnake.unshift(newHead);
     }
     let collision = this.state.snake.map((s) => s.pos).includes(newSnake[0].pos);
     if (collision) {
         this.props.onGameOver();
         clearInterval(this.timerId);
+        return;
     }
 
     this.setState({
@@ -76,16 +88,17 @@ class Board extends React.Component {
     });
   }
 
-  keyPress(event) {
+  getDirectionFromEvent(event) {
     const mapping = {
-        ArrowUp: 'up',
-        ArrowDown: 'down',
-        ArrowLeft: 'left',
-        ArrowRight: 'right',
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
     };
-    let newDirection = mapping[event.key];
-    if (!newDirection) return;
+    return mapping[event.key];
+  }
 
+  isNewDirectionValid(newDirection) {
     const opposite = {
       up: 'down',
       down: 'up',
@@ -93,11 +106,24 @@ class Board extends React.Component {
       right: 'left'
     };
     let snake = this.state.snake;
-    if (snake.length > 1 && opposite[snake[0].direction] === newDirection) return;
-    if (this.state.directionChanges.map((d) => d.pos).includes(snake[0].pos)) return;
+    if (snake.length > 1 && opposite[snake[0].direction] === newDirection) return false;
 
+    let isChangeAlreadySetForThisPosition = this.state.directionChanges.map((d) => d.pos).includes(snake[0].pos);
+    if (isChangeAlreadySetForThisPosition) return false;
+
+    return true;
+  }
+
+  changeDirection(event) {
+    let newDirection = this.getDirectionFromEvent(event);
+    if (!newDirection) return;
+
+    if(!this.isNewDirectionValid(newDirection)) return;
+
+    let snake = this.state.snake;
     snake[0].direction = newDirection;
     let directionChange = {pos:snake[0].pos, direction: newDirection};
+
     this.setState({
       snake: snake,
       directionChanges: this.state.directionChanges.concat([directionChange])
@@ -129,7 +155,7 @@ class Board extends React.Component {
     return (
       <div
         className="board"
-        onKeyDown={this.keyPress}
+        onKeyDown={this.changeDirection}
         tabIndex={0}
       >
         {board}
