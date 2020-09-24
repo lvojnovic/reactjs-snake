@@ -27,17 +27,21 @@ class Game extends React.Component {
     );
   }
 
+  restartTick() {
+    clearInterval(this.timerId);
+    this.timerId = setInterval(
+      () => this.tick(),
+      this.state.tickInterval
+    );
+  }
+
   handleTickChange(event) {
     const newInterval = event.target.value;
     const newIntervalNumber = +newInterval;
     this.setState({
         tickInterval: newIntervalNumber
     }, () => {
-      clearInterval(this.timerId);
-      this.timerId = setInterval(
-        () => this.tick(),
-        newIntervalNumber
-      );
+      this.restartTick();
     });
   }
 
@@ -167,7 +171,7 @@ class Game extends React.Component {
   }
 
   restart() {
-    this.setState(this.getInitialState(this.state.boardSize));
+    this.setState(this.getInitialState(this.state.boardSize), () => this.restartTick());
   }
 
   render() {
