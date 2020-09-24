@@ -1,3 +1,7 @@
+.options input {
+    width: 50px;
+}
+
 .board-row:after {
   clear: both;
   content: "";
